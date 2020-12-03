@@ -23,6 +23,8 @@
 #include "dltuiutils.h"
 #include "optmanager.h"
 
+#include "dlt_protocol.h"
+#include "regex_search_replace.h"
 
 SearchTableModel::SearchTableModel(const QString &,QObject *parent) :
     QAbstractTableModel(parent)
@@ -186,8 +188,34 @@ QVariant SearchTableModel::data(const QModelIndex &index, int role) const
     }
 
     if ( role == Qt::BackgroundRole ) {
-        //always black
-        return QVariant(QBrush(QColor(255,255,255)));
+        if(!qfile->getMsg(m_searchResultList.at(index.row()), msg)) {
+            //always white
+            return QVariant(QBrush(QColor(255,255,255)));
+        } else {
+            QColor color = qfile->checkMarker(msg);
+
+            if(color.isValid())
+            {
+                return QVariant(QBrush(color));
+            }
+            else
+            {
+                if(project->settings->autoMarkFatalError && ( msg.getSubtypeString() == "error" || msg.getSubtypeString() == "fatal") )
+                {
+                    return QVariant(QBrush(QColor(255,0,0)));
+                }
+                if(project->settings->autoMarkWarn && msg.getSubtypeString() == "warn")
+                {
+                    return QVariant(QBrush(QColor(255,255,0)));
+                }
+                if(project->settings->autoMarkMarker && msg.getType()==QDltMsg::DltTypeControl &&
+                    msg.getSubtype()==QDltMsg::DltControlResponse && msg.getCtrlServiceId() == DLT_SERVICE_ID_MARKER)
+                {
+                    return QVariant(QBrush(QColor(0,255,0)));
+                }
+                return QVariant(QBrush(QColor(255,255,255))); // this is the default background clor
+            }
+        }
     }
 
 
